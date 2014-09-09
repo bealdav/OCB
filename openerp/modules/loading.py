@@ -372,6 +372,8 @@ def load_modules(db, force_demo=False, status=None, update_module=False):
             for (model, name) in cr.fetchall():
                 model_obj = pool.get(model)
                 if model_obj and not model_obj.is_transient() and not isinstance(model_obj, openerp.osv.orm.AbstractModel):
+                    print model, name, model_obj
+                    akretion_create_security_file(model, model_obj.__module__)
                     _logger.warning('The model %s has no access rules, consider adding one. E.g. access_%s,access_%s,model_%s,,1,1,1,1',
                         model, model.replace('.', '_'), model.replace('.', '_'), model.replace('.', '_'))
 
@@ -446,4 +448,23 @@ def load_modules(db, force_demo=False, status=None, update_module=False):
         cr.close()
 
 
+def akretion_create_security_file(model, classname):
+    model_r = model.replace('.', '_')
+    cpnt = classname.split('.')
+    module = '_'
+    if cpnt[1] == 'addons' and cpnt[0] == 'openerp':
+        module = cpnt[2]
+    folder = ''
+    for elm in ['/tmp/erp', '/' + module, '/' + model_r, '/security']:
+        folder += elm
+        #print folder
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+    filename = folder + '/ir.model.access.csv'
+    with open(filename, 'w') as f:
+        head = '"id","name","model_id:id","group_id:id","perm_read"' + \
+               ',"perm_write","perm_create","perm_unlink"'
+        f.write(head + "\naccess_%s,access_%s,model_%s,base.group_user,0,0,0,0" %
+                (model, model_r, model_r))
+        f.close()
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
